@@ -5,16 +5,9 @@
 //  Created by Julio on 04/12/17.
 //
 
-//
-//  URLConfigurationProvider.swift
-//  ConfigurationProvider
-//
-//  Created by Julio on 04/12/17.
-//
-
 import UIKit
 
-enum URLConfigurationProviderAbortReason : Int {
+enum URLConfigurationProviderAbortReason: Int {
     case unknown
     case unableToLoad
     case invalidURL
@@ -23,21 +16,23 @@ enum URLConfigurationProviderAbortReason : Int {
     case domainNotFound
 }
 
-public class URLConfigurationProvider: NSObject {
-    
-    public static var instance: URLConfigurationProvider!
-    
-    //MARK: - Public Methods
+public class URLConfigurationProvider {
+    /// Singleton URLConfigurationProvider
+    private static var instance = URLConfigurationProvider()
     
     /// Singleton URLConfigurationProvider
     ///
     /// - Returns: retorna a classe URLConfigurationProvider
     public class func shared() -> URLConfigurationProvider {
-        self.instance = (self.instance ?? URLConfigurationProvider())
-        
-        return self.instance
+        instance
     }
     
+    // Private initializer to enforce Singleton pattern
+    private init() { }
+}
+
+//MARK: - Public Methods
+public extension URLConfigurationProvider {
     /// Busca pela URL no arquivo de Configuration.plist
     ///
     /// - Parameters:
@@ -45,8 +40,13 @@ public class URLConfigurationProvider: NSObject {
     ///   - replacements: parametros para ser substituido na URL original
     ///   - hasDomain: caso exista a chave domain
     /// - Returns: retorna a URL
-    public class func urlBy(tag: String, replacements: NSDictionary? = nil, hasDomain: Bool = false) -> URL? {
-        if let url = urlStringBy(tag: tag, replacements: replacements, hasDomain: hasDomain) {
+    class func urlBy(
+        tag: String,
+        replacements: NSDictionary? = nil,
+        hasDomain: Bool = false,
+        bundle: Bundle = .main
+    ) -> URL? {
+        if let url = urlStringBy(tag: tag, replacements: replacements, hasDomain: hasDomain, bundle: bundle) {
             return URL(string: url)
         }
         
@@ -60,21 +60,32 @@ public class URLConfigurationProvider: NSObject {
     ///   - replacements: parametros para ser substituido na URL original
     ///   - hasDomain: caso exista a chave domain
     /// - Returns: retorna a URL (String)
-    public class func urlStringBy(tag: String, replacements: NSDictionary? = nil, hasDomain: Bool = false) -> String? {
-        return URLConfigurationProvider.shared().urlStringBy(tag: tag, replacements: replacements, hasDomain: hasDomain)
+    class func urlStringBy(
+        tag: String,
+        replacements: NSDictionary? = nil,
+        hasDomain: Bool = false,
+        bundle: Bundle = .main
+    ) -> String? {
+        return URLConfigurationProvider.instance.urlStringBy(tag: tag, replacements: replacements, hasDomain: hasDomain, bundle: bundle)
     }
-    
-    //MARK: - Private Methods
-    
+}
+
+//MARK: - Private Methods
+private extension URLConfigurationProvider {
     /// Busca pela URL (String) no arquivo de Configuration.plist
     ///
     /// - Parameters:
     ///   - tag: chave no arquivo de configuração
     ///   - replacements: parametros para ser substituido na URL original
     /// - Returns: retorna a URL (String)
-    private func urlStringBy(tag: String, replacements: NSDictionary?, hasDomain: Bool) -> String? {
+    func urlStringBy(
+        tag: String,
+        replacements: NSDictionary?,
+        hasDomain: Bool,
+        bundle: Bundle = .main
+    ) -> String? {
         
-        guard let endpoints: NSDictionary = ConfigurationProvider.shared().getBy(tag: "endpoints") else {
+        guard let endpoints: NSDictionary = ConfigurationProvider.getBy(tag: "endpoints", bundle: bundle) else {
             abortFor(reason: .tagNotFound, details: "Tag not found: \(tag)")
             return nil
         }
@@ -85,7 +96,7 @@ public class URLConfigurationProvider: NSObject {
         }
         
         if hasDomain {
-            guard let domain: String = ConfigurationProvider.shared().getBy(tag: "domain") else {
+            guard let domain: String = ConfigurationProvider.getBy(tag: "domain", bundle: bundle) else {
                 abortFor(reason: .domainNotFound, details: "Domain not found")
                 return nil
             }
@@ -101,9 +112,9 @@ public class URLConfigurationProvider: NSObject {
             }
         }
             
-        urlString = urlString.replacingOccurrences(of: "${bundle}", with: Bundle.main.bundleURL.absoluteString)
-        
-        guard let urlString = urlString.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) else {
+        urlString = urlString.replacingOccurrences(of: "${bundle}", with: bundle.bundleURL.absoluteString)
+
+	guard let urlString = urlString.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlHostAllowed) else {
             abortFor(reason: .invalidURL, details: "Unable to convert URL: \(urlString)")
             return nil
         }
@@ -121,7 +132,7 @@ public class URLConfigurationProvider: NSObject {
     /// - Parameters:
     ///   - reason: Tipo de excessão que será lançado
     ///   - details: mensagem de erro para ajudar o desenvolvedor a analisar o erro
-    private func abortFor(reason: URLConfigurationProviderAbortReason, details: String) -> Void {
+    func abortFor(reason: URLConfigurationProviderAbortReason, details: String) -> Void {
         let exceptionName: NSExceptionName!
         switch (reason) {
         case .unableToLoad:     exceptionName = NSExceptionName(rawValue: "URLConfigurationProvider Error: Unable To Load")
@@ -133,5 +144,4 @@ public class URLConfigurationProvider: NSObject {
         }
         NSException(name: exceptionName, reason: details, userInfo: nil).raise()
     }
-    
 }
