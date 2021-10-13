@@ -4,7 +4,6 @@
 //
 //  Created by Julio on 04/12/17.
 //
-
 import UIKit
 
 enum URLConfigurationProviderAbortReason: Int {
@@ -113,11 +112,6 @@ private extension URLConfigurationProvider {
         }
             
         urlString = urlString.replacingOccurrences(of: "${bundle}", with: bundle.bundleURL.absoluteString)
-
-	guard let urlString = urlString.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlHostAllowed) else {
-            abortFor(reason: .invalidURL, details: "Unable to convert URL: \(urlString)")
-            return nil
-        }
         
         guard let url = NSURL(string: urlString) else {
             abortFor(reason: .invalidURL, details: "Unable to convert URL: \(urlString)")
